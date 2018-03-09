@@ -1,24 +1,67 @@
 import React, { Component } from 'react';
 import {AppRegistry, StyleSheet, Text, View, Dimensions} from 'react-native';
 import MapView from 'react-native-maps';
+import BackgroundGeolocation from 'react-native-background-geolocation';
+import SettingsService from './SettingsService'
+const TRACKER_HOST = 'http://tracker.transistorsoft.com/locations/';
+const STATIONARY_REGION_FILL_COLOR = "rgba(200,0,0,0.2)"
+const STATIONARY_REGION_STROKE_COLOR = "rgba(200,0,0,0.2)"
+const GEOFENCE_STROKE_COLOR = "rgba(17,183,0,0.5)"
+const GEOFENCE_FILL_COLOR   ="rgba(17,183,0,0.2)"
+const GEOFENCE_STROKE_COLOR_ACTIVATED = "rgba(127,127,127,0.5)";
+const GEOFENCE_FILL_COLOR_ACTIVATED = "rgba(127,127,127, 0.2)";
+const POLYLINE_STROKE_COLOR = "rgba(32,64,255,0.6)";
 
 
 export default class App extends React.Component{
-  state = {
+  constructor(props) {
+    super(props);
+
+    this.lastMotionChangeLocation = undefined;
+
+  this.state = {
   region:null,
   result:"yo",
   pos:null,
   latitude:null,
   longitude:null,
-  polygon : [
-    { lat: 17.4222059, lng: 78.3818687 },
-    { lat: 17.3222059, lng: 78.1818687 },
-    { lat: 17.1222059,  lng: 77.8818687 },
-    { lat: 16.8222059, lng: 78.6818687},
-    { lat: 16.7222059, lng: 78.4818687 },
-    { lat: 17.4222059, lng: 78.3818687 } // last point has to be same as first point
-  ]
-  };
+  settings: {},
+  enabled: false,
+      isMoving: false,
+      motionActivity: {activity: 'unknown', confidence: 100},
+      odometer: 0,
+      username:'',
+      // ActionButton state
+      isMainMenuOpen: true,
+      isSyncing: false,
+      isEmailingLog: false,
+      isDestroyingLocations: false,
+      // Map state
+      centerCoordinate: {
+        latitude: 0,
+        longitude: 0
+      },
+      isPressingOnMap: false,
+      mapScrollEnabled: false,
+      showsUserLocation: false,
+      followsUserLocation: false,
+      stationaryLocation: {timestamp: '',latitude:0,longitude:0},
+      stationaryRadius: 0,
+      markers: [],
+      stopZones: [],
+      geofences: [],
+      geofencesHit: [],
+      geofencesHitEvents: [],
+      coordinates: [],
+      // Application settings
+      settings: {},
+      // BackgroundGeolocation state
+      bgGeo: {}
+    };
+
+    this.settingsService = SettingsService.getInstance();
+    this.settingsService.setUsername('bro');
+  }
 
   componentWillMount() {
     navigator.geolocation.getCurrentPosition(
@@ -26,6 +69,7 @@ export default class App extends React.Component{
              console.log("wokeeey");
              console.log(position);
              this.setState({
+               pos:position.coords,
                latitude: position.coords.latitude,
                longitude: position.coords.longitude,
                error: null,
@@ -35,20 +79,8 @@ export default class App extends React.Component{
            { enableHighAccuracy: false, timeout: 200000, maximumAge: 1000 },
          );
 
-  this._getLocationAsync();
   }
 
-  _getLocationAsync = async () => {
-
-
-  // let location = await Location.getCurrentPositionAsync({});
-  // // console.log(location["coords"])
-  // this.setState({ region: {latitude: location.coords.latitude,
-  //           longitude: location.coords.longitude,
-  //           latitudeDelta: 0.01,
-  //           longitudeDelta: 0.0011 }});
-  // console.log(this.state.region)
-   };
   render(){
     if (this.state.latitude==null)
     {return(
@@ -60,20 +92,44 @@ export default class App extends React.Component{
   else {
     return (
       <MapView
-        style={{flex:1}}
-        initialRegion={{
+          ref="map"
+          style={styles.map}
+          initialRegion={{
           latitude:this.state.latitude,
           longitude:this.state.longitude,
           latitudeDelta: 0.01,
             longitudeDelta: 0.0011
         }}
-    >
-    <MapView.Marker coordinate={{ latitude: this.state.latitude, longitude: this.state.longitude }}
+          showsUserLocation={true}
+          followsUserLocation={false}
+          // onLongPress={this.onLongPress.bind(this)}
+          // onPanDrag={this.onMapPanDrag.bind(this)}
+          scrollEnabled={true}
+          showsMyLocationButton={false}
+          showsPointsOfInterest={false}
+          showsScale={false}
+          showsTraffic={false}
+          toolbarEnabled={false}>
+          <MapView.Circle
+            key="10"
+            radius={200.25}
+            fillColor={STATIONARY_REGION_FILL_COLOR}
+            strokeColor={STATIONARY_REGION_STROKE_COLOR}
+            strokeWidth={1}
+            center={{latitude: this.state.pos.latitude, longitude: this.state.pos.longitude}}
+          />
+          </MapView>
 
-              >
+          //Trying to invoke interface method iterator on null object
+          // <MapView.Polyline
+          //             key="polyline"
+          //             coordinates={(!this.state.settings.hidePolyline) ? this.state.coordinates : []}
+          //             geodesic={true}
+          //             strokeColor='rgba(0,179,253, 0.6)'
+          //             strokeWidth={6}
+          //             zIndex={0}
+          //           />
 
-          </MapView.Marker>
-        </MapView>
     )
   }
 }
